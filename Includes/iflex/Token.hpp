@@ -3,6 +3,7 @@
 #define IFLEX_TOKEN_HPP
 
 #include <dtg/Utilities.hpp>
+#include <regex>
 
 namespace iflex {
 	template<class TokenTypes, size_t TokenizerSize, TokenTypes NOTAPPLICALE>
@@ -58,14 +59,13 @@ namespace iflex {
 	public:
 		using Type = Traits::TokenTypes;
 
-		Tokenable() = delete;
+		Tokenable():m_Name(0), m_Type(Traits::NA){};
 
 		Tokenable(const char* name, Type type, bool regular = false):m_Name(name),
 			m_Type(type), m_Regular(regular){}
 
-		Tokenable(const Tokenable&) = delete;
-
-		Tokenable(Tokenable&&) = delete;
+		Tokenable(const Tokenable&):m_Name(other.m_Name),
+			m_Type(other.m_Type), m_Regular(other.m_Regular){}
 
 		void Swap(Tokenable& other) {
 			dtg::Swap(m_Name, other.m_Name);
@@ -73,7 +73,15 @@ namespace iflex {
 			dtg::Swap(m_Regular, other.m_Regular);
 		}
 
-		bool Regular() {
+		const char* GetName() const {
+			return m_Name;
+		}
+
+		Type GetType() const {
+			return m_Type;
+		}
+
+		bool Regular() const {
 			return m_Regular;
 		}
 	private:
@@ -84,6 +92,8 @@ namespace iflex {
 
 	template <class Traits>
 	class Tokenizer {
+		public:
+		using Type = Traits::TokenTypes;
 		protected:
 		Tokenizer(Tokenable* Tokenables):m_Tokenables(Tokenables){Sort();}
 
@@ -111,15 +121,51 @@ namespace iflex {
 		void Sort() {
 			size_t j = SortOutRegular();
 			if (!m_Tokenables[j].Regular()) {// Check if all Tokenables are regulars
-
+				dtg::MergeSort(m_Tokenables, j,
+					[](const Tokenable& first, const Tokenable& second)->bool {
+						return strcmp(first.GetName(), second.GetName());
+				});
 			}
+		}
+
+		Type FindRegular(const char* name) {
+			for (size_t i = m_ReservedSize + 1; i != Traits::size; ++i) {
+				if (std::regex_match(name, m_Tokenables[i].GetName())
+					return m_Tokenables[i].GetType());
+			}
+			return Traits::NA;
 		}
 
 		public:
 
+		static Type Find(const char* name) {
+			size_t l = 0;
+			size_t m = m_ReservedSize / 2;
+			size_t r = m_ReservedSize - 1;
+			int temp;
+			for (;;) {
+				if (temp = strcmp(name,m_Tokenables[m]) > 0) {
+					l = m;
+					m += (r - l) / 2;
+					if (l == m)
+						break;
+				}
+				else if(temp < 0) {
+					r = m;
+					m -= (r - l) / 2;
+					if (m == r)
+						break;
+				}
+				else
+					return m_Tokenables[m].GetType();
+			}
+			return FindRegular(name);
+		}
+
 		private:
-		static Tokenable* m_Tokenables;
-		static Tokenable* m_MapTokenable[Traits::size];
+		static Tokenable*	m_Tokenables;
+		static Tokenable*	m_MapTokenable[Traits::size];
+		static size_t		m_ReservedSize;
 	};
 
 
