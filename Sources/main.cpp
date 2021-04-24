@@ -1,21 +1,16 @@
 #include <iostream>
 #include <iflex/Token.hpp>
 
+
 namespace my {
-	enum Tokens {
-		NA,
-		PROGRAM,
-		NAME,
-	};
-
+	enum Tokens {NA, PROGRAM, NAME,};
 	typedef iflex::Traits<Tokens, NA> Traits;
-	class Tokenizer : iflex::Tokenizer<Traits> {
+	class Tokenizer : public iflex::Tokenizer<Traits> {
 		public:
-
 		using Base = iflex::Tokenizer<Traits>;
 		using Base::Tokenize;
+		using CharType = typename Traits::CharType;
 		private:
-
 		Tokenizer(){
 			Initialize(m_Names, sizeof(m_Names) / sizeof(Tokenable));
 		}
@@ -26,24 +21,22 @@ namespace my {
 			static Tokenizer t;
 			return t;
 		}
-
-		static auto Find(const char* name) {
-			return Get().Base::Find(name);
-		}
-
-		static auto Find(Tokens token) {
-			return Get().Base::Find(token);
-		}
-
 		private:
 		Tokenable m_Names[3] {
 			{"", NA},
 			{"program", PROGRAM},
-			{"_[a-z]*[A-Z]*[0-9]*", NAME, true},
-		};
-
-
-	};
+			{"[_A-Za-z]+[_A-Za-z0-9]*", NAME, true},	};};}
+int main () {
+	using namespace iflex;
+	my::Tokenizer& tokenizer = my::Tokenizer::Get();
+	iflex::Token<my::Traits> token(tokenizer.Find(my::PROGRAM), my::PROGRAM, 1, 1);
+	Token<my::Traits> token2 = tokenizer.Tokenize("_aZ0", 2, 37);
+	Token<my::Traits> token3 = tokenizer.Tokenize("_0", 2, 37);
+	Token<my::Traits> token4 = tokenizer.Tokenize("aZ0", 2, 37);
+	Token<my::Traits> token5 = tokenizer.Tokenize("0Z0", 2, 37);
+	std::wcout << token << '\n' << token2 << '\n' 
+	<< token3 << '\n' << token4 << '\n' << token5;
+}
 	/*
 	class TokenList {
 		public:
@@ -71,17 +64,7 @@ namespace my {
 	*/
 //	typedef TokenList::Traits Traits;
 
-}
 
 
 
 
-int main () {
-	using namespace iflex;
-	iflex::Token<my::Traits> token(my::Tokenizer::Find(my::PROGRAM), my::PROGRAM, 1, 1);
-	Token<my::Traits> token2 = my::Tokenizer::Get().Tokenize("_aZ0", 2, 37);
-	Token<my::Traits> token3 = my::Tokenizer::Get().Tokenize("_0", 2, 37);
-	Token<my::Traits> token4 = my::Tokenizer::Get().Tokenize("aZ0", 2, 37);
-	std::cout << token << '\n' << token2 << '\n' 
-	<< token3 << '\n' << token4;;
-}

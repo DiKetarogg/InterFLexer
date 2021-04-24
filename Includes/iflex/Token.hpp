@@ -6,24 +6,55 @@
 #include <regex>
 
 namespace iflex {
-	template<class Type, Type NA>
+	template<class Type, Type NA, class CharTypee>
 	class Tokenable;
 	template<class Traits>
 	class Tokenizer;
-	template<class TokenTypee, /*size_t TokenizerSize,*/ TokenTypee NOTAPPLICABLE>
+
+	template <class T>
+	class GetStringCompare;
+	
+	template<>
+	struct GetStringCompare<char>{
+		static constexpr auto get = strcmp;
+	};
+
+	template<>
+	struct GetStringCompare<wchar_t>{
+		static constexpr auto get = wcscmp;
+	};
+
+	template <class T>
+	class GetEmptyString;
+	
+	template<>
+	struct GetEmptyString<char>{
+		static constexpr auto get = "";
+	};
+
+	template<>
+	struct GetEmptyString<wchar_t>{
+		static constexpr auto get = L"";
+	};
+
+
+
+	template<class TokenTypee, TokenTypee NOTAPPLICABLE,
+		class CharTypee = char>
 	struct Traits {
 		private:
 		
 		Traits() = delete;
 		Traits(const Traits&) = delete;
 		Traits(Traits&&) = delete;
-		
+
 		friend class Tokenizer<Traits>;
 		public:
 		using TokenType		= TokenTypee;
+		using CharType		= CharTypee;
 		typedef iflex::Tokenizer<Traits> Tokenizer;
-		static const TokenType NA = NOTAPPLICABLE;
-		using Tokenable = iflex::Tokenable<TokenType, NA>;
+		static constexpr TokenType NA = NOTAPPLICABLE;
+		using Tokenable = iflex::Tokenable<TokenType, NA, CharType>;
 
 		//private:
 		//static TokenableType* names = Names;
@@ -33,17 +64,18 @@ namespace iflex {
 	class Token {
 	public:
 		using Type = typename Traits::TokenType;
+		using CharType = typename Traits::CharType;
 		Token():m_Name(0),m_Type(Traits::NA){}
 		
-		Token(const char* name, Type type, size_t line, size_t character)
-			:m_Name(const_cast<char*>(name)),
+		Token(const CharType* name, Type type, size_t line, size_t character)
+			:m_Name(const_cast<CharType*>(name)),
 			m_Line(line),m_Char(character),m_Type(type){}
 
-		Token(const char* name, Type type, const std::pair<size_t, size_t>& location)
-			:m_Name(const_cast<char*>(name)),
+		Token(const CharType* name, Type type, const std::pair<size_t, size_t>& location)
+			:m_Name(const_cast<CharType*>(name)),
 			m_Line(location.first),m_Char(location.second),m_Type(type){}
 
-		void SetName(const char* name) {
+		void SetName(const CharType* name) {
 			m_Name = name;
 		}
 
@@ -59,14 +91,14 @@ namespace iflex {
 			m_Type = type;
 		}
 
-		void Set(const char* name, size_t line, size_t ch, Type type) {
-		m_Name = const_cast<char*>(name);
+		void Set(const CharType* name, size_t line, size_t ch, Type type) {
+		m_Name = const_cast<CharType*>(name);
 		m_Line = line;
 		m_Char = ch;
 		m_Type = type;
 		}
 	
-		const char* GetName() const {
+		const CharType* GetName() const {
 			return m_Name;
 		}
 
@@ -82,13 +114,13 @@ namespace iflex {
 			return m_Type;
 		}	
 	private:
-		char*	m_Name;
+		CharType*	m_Name;
 		size_t	m_Line;
 		size_t	m_Char;
 		Type	m_Type;
 	};
 
-	template<class Type, Type NA>
+	template<class Type, Type NA, class CharTypee = char>
 	class Tokenable {
 	public:
 		enum {
@@ -97,22 +129,26 @@ namespace iflex {
 			SPECIAL,
 			COMPOUND
 		};
-		Tokenable():m_Name(const_cast<char*>("")), m_Token(NA){};
+	using CharType = CharTypee;
 
-		Tokenable(const char* name, Type token, bool regular = false)
+		Tokenable()
+		:m_Name(const_cast<CharType*>
+		(GetEmptyString<CharType>::get)), m_Token(NA){};
+
+		Tokenable(const CharType* name, Type token, bool regular = false)
 			:m_Name(
 				regular ?
-					reinterpret_cast<char*>(new std::regex(name))
+					reinterpret_cast<CharType*>(new std::basic_regex<CharType>(name))
 				:
-					const_cast<char*>(name)),
+					const_cast<CharType*>(name)),
 			m_Token(token),
 			m_Type(regular ? REGULAR : WORD){}
 
 		Tokenable(const Tokenable& other)
 			:m_Name(
 			other.m_Type == REGULAR ?
-					reinterpret_cast<char*>
-					(new std::regex(*other.m_Regular))
+					reinterpret_cast<CharType*>
+					(new std::basic_regex<CharType>(*other.m_Regular))
 				:
 					other.m_Name
 			),
@@ -124,13 +160,13 @@ namespace iflex {
 			dtg::Swap(m_Type, other.m_Type);
 		}
 
-		const char* GetName() const {
+		const CharType* GetName() const {
 			if (m_Type == REGULAR)
 				return 0;
 			return m_Name;
 		}
 
-		const std::regex* GetRegular() const {
+		const std::basic_regex<CharType>* GetRegular() const {
 			if (m_Type != REGULAR)
 				return 0;
 			return m_Regular;
@@ -153,7 +189,7 @@ namespace iflex {
 				delete m_Regular;
 
 			if (other.m_Type == REGULAR)
-				m_Regular = new std::regex(*other.m_Regular);
+				m_Regular = new std::basic_regex<CharType>(*other.m_Regular);
 			else
 				m_Name = other.m_Name;
 
@@ -177,11 +213,11 @@ namespace iflex {
 	private:
 
 		union {
-		char*		m_Name;
-		std::regex* 	m_Regular;
+		CharType*			m_Name;
+		std::basic_regex<CharType>* 	m_Regular;
 		};
-		Type		m_Token;
-		decltype(WORD)	m_Type;
+		Type				m_Token;
+		decltype(WORD)			m_Type;
 	};
 
 	template <class Traits>
@@ -190,6 +226,7 @@ namespace iflex {
 		using Type = typename Traits::TokenType;
 		using Tokenable = typename Traits::Tokenable;
 		using Token = typename iflex::Token<Traits>;
+		using CharType = typename Traits::CharType;
 		protected:
 		
 		void Initialize(Tokenable* names, size_t size) {
@@ -238,7 +275,8 @@ namespace iflex {
 			if (!m_Tokenables[m_LastWord].Regular()) {// Check if there are non-regular tokens
 				dtg::MergeSort<Tokenable>(m_Tokenables, m_LastWord + 1,
 					[](const Tokenable& first, const Tokenable& second)->bool {
-						return strcmp(first.GetName(), second.GetName()) < 0;
+						return iflex::GetStringCompare<CharType>::
+						get(first.GetName(), second.GetName()) < 0;
 				});
 			}
 
@@ -253,7 +291,7 @@ namespace iflex {
 				);
 		}
 
-		Type FindRegular(const char* name) const {
+		Type FindRegular(const CharType* name) const {
 			for (size_t i = m_LastWord + 1; i != m_Size; ++i) {
 				if (std::regex_match(name, *m_Tokenables[i].GetRegular()))
 					return m_Tokenables[i].GetToken();
@@ -263,7 +301,7 @@ namespace iflex {
 
 		public:
 
-		Type Find(const char* name) const {
+		Type Find(const CharType* name) const {
 			if (!m_LastWord)
 				return FindRegular(name);
 			size_t l = 0;
@@ -271,7 +309,8 @@ namespace iflex {
 			size_t r = m_LastWord;
 			int temp;
 			for (;;) {
-				if ((temp = strcmp(name,m_Tokenables[m].GetName())) > 0) {
+				if ((temp = GetStringCompare<CharType>::
+					get(name,m_Tokenables[m].GetName())) > 0) {
 					l = m;
 					m += (r - l) / 2;
 					if (l == m)
@@ -289,7 +328,7 @@ namespace iflex {
 			return FindRegular(name);
 		}
 
-		const char* Find(Type token) const {
+		const CharType* Find(Type token) const {
 			size_t l = 0;
 			size_t m = m_LastWord / 2;
 			size_t r = m_LastWord;
@@ -312,10 +351,10 @@ namespace iflex {
 					return m_Tokenables[m].GetName();
 			}
 			//static_assert(true, "iflex::Tokenizer::Find() Token Type not found.");
-			return "";
+			return GetEmptyString<CharType>::get;
 		}
 
-		Token Tokenize(const char* name, size_t character, size_t line) {
+		Token Tokenize(const CharType* name, size_t character, size_t line) {
 			return Token(name, Find(name), character, line);
 		}
 
@@ -334,6 +373,13 @@ template<class Traits>
 std::ostream& operator <<(std::ostream& stream, const Token<Traits>& other) {
 	stream << '\'' << other.GetName() << '\'' << "{Line:" <<
 	other.GetLine() << ", Char:" << other.GetChar() << ", ID: " << other.GetType() << '}';
+	return stream;
+}
+
+template<class Traits>
+std::wostream& operator <<(std::wostream& stream, const Token<Traits>& other) {
+	stream << L'\'' << other.GetName() << L'\'' << L"{Line:" <<
+	other.GetLine() << L", Char:" << other.GetChar() << L", ID: " << other.GetType() << L'}';
 	return stream;
 }
 #endif
