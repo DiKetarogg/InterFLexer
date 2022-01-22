@@ -90,7 +90,7 @@ namespace iflex {
 				return FindRegular(name);
 			size_t l = 0;
 			size_t m = (m_WordsSize - 1) / 2;
-			size_t r = m_WordsSize - 1;
+			size_t r = m_WordsSize;
 			int temp;
 			for (;;) {
 				if ((temp = GetStringCompare<CharType>::
@@ -117,7 +117,7 @@ namespace iflex {
 				return GetEmptyString<CharType>::get;
 			size_t l = 0;
 			size_t m = (m_WordsSize - 1) / 2;
-			size_t r = m_WordsSize - 1;
+			size_t r = m_WordsSize;
 			for (;;) {
 				if (static_cast<size_t>(token) >
 					static_cast<size_t>(m_Tokenables[m].GetToken())) {
