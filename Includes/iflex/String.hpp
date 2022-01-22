@@ -22,12 +22,25 @@ namespace iflex {
 	
 	template<>
 	struct GetEmptyString<char>{
-		static constexpr auto get = "";
+		static constexpr const char* get = "";
 	};
 
 	template<>
 	struct GetEmptyString<wchar_t>{
-		static constexpr auto get = L"";
+		static constexpr const wchar_t * get = L"";
 	};
+
+	template<class T>
+	struct GetLineFeed;
+
+	template<>
+	struct GetLineFeed<char>{
+		static constexpr auto get = '\n';
+	};
+	template<>
+	struct GetLineFeed<wchar_t>{
+		static constexpr auto get = L'\n';
+	};
+
 }
 #endif

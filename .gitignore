@@ -3,3 +3,6 @@ bin/*
 *.swp
 *.swo
 update.sh
+*.out
+errors.txt
+test.cpp

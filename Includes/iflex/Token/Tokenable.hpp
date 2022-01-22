@@ -4,7 +4,7 @@
 
 #include <regex>
 
-#include "String.hpp"
+#include "../String.hpp"
 #include <dtg/Utilities.hpp>
 namespace iflex {
 	template<class Traits>
@@ -15,7 +15,7 @@ namespace iflex {
 
 		Tokenable()
 		:m_Name(const_cast<CharType*>
-		(GetEmptyString<CharType>::get)), m_Enum(Traits::NA){};
+		(GetEmptyString<CharType>::get)), m_Enum(Traits::NA), m_IsRegular(false){};
 
 		Tokenable(const CharType* name, Enum token, bool regular = false)
 			:m_Name(

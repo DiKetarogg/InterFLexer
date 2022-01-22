@@ -4,7 +4,7 @@
 
 #include <regex>
 #include <dtg/Utilities.hpp>
-#include "String.hpp"
+#include "../String.hpp"
 namespace iflex {
 	template <class Traits>
 	class Tokenizer {
@@ -139,12 +139,16 @@ namespace iflex {
 			return GetEmptyString<CharType>::get;
 		}
 
-		Token Tokenize(const CharType* name, size_t character, size_t line) {
-			return Token(name, Find(name), character, line);
+		inline Token Tokenize(const CharType* name, size_t line, size_t character) {
+			return Token(name, Find(name), line, character);
+		}
+
+		inline Token operator()(const CharType* name, size_t line, size_t character) {
+			return Token(name, Find(name), line, character);
 		}
 
 		~Tokenizer() {
-			delete m_MapTokenable;
+			delete[] m_MapTokenable;
 		}
 		private:
 		Tokenable*		m_Tokenables;

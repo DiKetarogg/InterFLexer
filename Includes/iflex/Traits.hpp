@@ -1,18 +1,15 @@
 #pragma once
-#ifndef IFLEX_TOKEN_TOKENTRAITS_HPP
-#define IFLEX_TOKEN_TOKENTRAITS_HPP
+#ifndef IFLEX_TRAITS_HPP
+#define IFLEX_TRAITS_HPP
+#include <locale>
+#include "String.hpp"
+#include "Lexer.hpp"
+#include "Parser.hpp"
+#include "Token.hpp"
 namespace iflex {
-	
-	template<class Traits>
-		class Tokenable;
-	template<class Traits>
-		class Tokenizer;
-	template<class Traits>
-		class Token;
-
 
 	template<class TokenEnum_, TokenEnum_ NOTAPPLICABLE,
-		class Char_ = char>
+		class Char_ = char, const char* const& Locale = GetEmptyString<char>::get>
 	struct Traits {
 
 		private:
@@ -28,15 +25,20 @@ namespace iflex {
 
 		using char_type 	= Char_;
 		using enum_type		= TokenEnum_;
+		typedef iflex::Lexer<Traits>		Lexer;
+		typedef iflex::Parser<Traits>		Parser;
 		typedef iflex::Tokenizer<Traits>	Tokenizer;
 		typedef iflex::Tokenable<Traits>	Tokenable;
 		typedef iflex::Token<Traits>		Token;
 
+		typedef iflex::Lexer<Traits>		lexer_type;
+		typedef iflex::Parser<Traits>		parser_type;
 		typedef iflex::Tokenizer<Traits>	tokenizer_type;
 		typedef iflex::Tokenable<Traits>	tokenable_type;
 		typedef iflex::Token<Traits>		token_type;
 
 		static constexpr TokenEnum NA = NOTAPPLICABLE;
+		static constexpr const char* locale = Locale;
 		//private:
 		//static TokenableType* names = Names;
 	};

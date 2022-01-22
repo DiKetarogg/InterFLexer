@@ -26,7 +26,7 @@ DEBUG_TARGET_NAME	=deb_InterFLexer
 OBJS_DIR	=Objects
 SRCS_DIR	=Sources
 TARGET_DIR	=bin
-INCLUDE_DIR	=Includes
+INCLUDE_DIR	=Includes Dependencies/dtg_lib/Includes
 DEBUG_DIR	=bin
 #*
 #* ************************************************************************** *#
@@ -36,16 +36,16 @@ DEBUG_DIR	=bin
 SRCS_EXT	=.cpp
 OBJS_EXT	=.o
 HEADER_EXT	=.hpp
-CC		=g++-10 -std=c++14 -o2
-CFLAGS		=-Wextra -Wall -Werror -Wno-parentheses #-Wno-error=parentheses
+CC		=g++-10 -std=c++17 -o2
+CFLAGS		=-Wextra -Wall -Werror -Wno-parentheses
 DEBUG_FLAGS	=-g3
-DEBUG_PROGRAM	=gdb -tui
+DEBUG_PROGRAM	=gdb -tui -arg
 #*
 #* ************************************************************************** *#
 #*                              Additional commands                           *#
 #* ************************************************************************** *#
 #*
-
+ARGS=
 #*
 #* ************************************************************************** *#
 #*                             Do not edit below                              *#
@@ -57,7 +57,7 @@ OBJS = $(patsubst $(SRCS_DIR)/%,$(OBJS_DIR)/%,$(SRCS:$(SRCS_EXT)=$(OBJS_EXT)))
 DIRS = $(SRCS_DIR) $(TARGET_DIR) $(OBJS_DIR)
 
 INCLUDES	= $(addprefix -I,$(sort $(dir $(shell find $(SRCS_DIR) -type f -name *$(HEADER_EXT)))))\
-			-I$(INCLUDE_DIR)
+			$(addprefix -I, $(INCLUDE_DIR))
 
 TARGET		= $(TARGET_DIR)/$(TARGET_NAME)
 
@@ -71,7 +71,7 @@ debug: $(DEBUG_TARGET)
 de: debug
 
 drun: debug
-	$(DEBUG_PROGRAM) $(DEBUG_DIR)/$(DEBUG_TARGET_NAME)
+	$(DEBUG_PROGRAM) $(DEBUG_DIR)/$(DEBUG_TARGET_NAME) $(ARGS)
 
 compile: ${OBJS} ${TARGET}
 
@@ -99,7 +99,10 @@ dirs:
 
 
 clean:
-	rm -rf ${TARGET_DIR}
+	rm -rf ${TARGET}
+
+dclean:
+	rm -rf ${DEBUG_TARGET}
 
 clear_console:
 	clear
@@ -116,11 +119,17 @@ re: fclean all
 remake: re
 
 run: ${TARGET}
-	./$(TARGET)
+	./$(TARGET) $(ARGS)
 rerun: re run
+
+dre: dclean fclean debug
+drerun: dre drun
+
+valrun: debug
+	valgrind $(DEBUG_TARGET) $(ARGS)
 test:
 	@echo '	SRCS: $(SRCS)'
 	@echo '	OBJS: $(OBJS)'
 	@echo '	INCLUDES: $(INCLUDES)'
 
-.PHONY: all cl clall clean clear_console compile de debug dirs drun fclean re remake rerun run test $(ADDPHONY)
+.PHONY: all cl clall clean clear_console compile de debug dirs drun fclean re remake rerun run test valrun dclean dre drerun $(ADDPHONY)

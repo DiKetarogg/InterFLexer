@@ -4,7 +4,7 @@
 
 #include <dtg/Utilities.hpp>
 #include <regex>
-#include "String.hpp"
+#include "../String.hpp"
 namespace iflex {
 
 	template<class Traits>
@@ -40,10 +40,10 @@ namespace iflex {
 		}
 
 		void Set(const CharType* name, size_t line, size_t ch, Enum type) {
-		m_Name = const_cast<CharType*>(name);
-		m_Line = line;
-		m_Char = ch;
-		m_Enum = type;
+			m_Name = const_cast<CharType*>(name);
+			m_Line = line;
+			m_Char = ch;
+			m_Enum = type;
 		}
 	
 		const CharType* GetName() const {
