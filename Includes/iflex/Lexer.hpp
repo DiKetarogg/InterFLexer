@@ -12,10 +12,9 @@ extern "C" {
 #include "TestValue.hpp"
 #include <dtg/Pack.hpp>
 #include <dtg/Utilities.hpp>
-
+#include <unordered_set>
 
 //#define IFLEX_LEXER_MAKEFUNC_SKIPRAW(input, expr)
-
 
 namespace iflex {
 
@@ -25,17 +24,25 @@ namespace iflex {
 		using CharType = typename Traits::CharType;
 		using Tokenizer = typename Traits::Tokenizer;
 		using Enum	= typename Traits::TokenEnum;
-		using Parser 	= typename Traits::Parser;
 		using Token	= typename Traits::Token;
-		protected:
+		using TokenList = typename Traits::TokenList;
+		using TokenLists= typename Traits::TokenLists;
+
+		using const_token_list_iterator	= typename TokenLists::const_iterator;
+		using token_list_iterator	= typename TokenLists::iterator;
+
+		using const_tokens_iterator	= typename TokenList::const_iterator;
+		using tokens_iterator		= typename TokenList::iterator;
+
+		using String = typename dtg::BasicSimpleString<CharType>;
 
 		private:
-		inline auto Close() {
-			if (fd > 0)
-				close(fd);
-			fd = -1;
+		inline void Close() {
+			if (m_Fd > 0)
+				close(m_Fd);
+			m_Fd = -1;
 		}
-/*
+/*//
 		inline auto Open(const wchar_t* name, std::ios::openmode flags = std::ios::in) {
 			return stream.open(name, flags);
 		}
@@ -50,15 +57,13 @@ namespace iflex {
 		}
 */
 		inline auto Open(const char* name, int flags = O_RDONLY) {
-			return (fd = open(name, flags)) > 0;
+			return (m_Fd = open(name, flags)) > 0;
 		}
 
 		protected:
 
-
-
-		Lexer(size_t bufferSize, Parser& parser, Tokenizer& tokenizer)
-		:m_Parser(parser), m_Tokenizer(tokenizer)
+		Lexer(size_t bufferSize, const Tokenizer& tokenizer)
+		:m_Tokenizer(tokenizer)
 		,m_Buffer(0)
 		,m_Start(0)
 		,m_End(0)
@@ -78,7 +83,7 @@ namespace iflex {
 		template<class... Expression>
 		void Read() {
 			for (;;) {
-			while (TestValue<CharType, Expression...>(*m_End, locale)) {
+			while (*m_End && TestValue<CharType, Expression...>(*m_End, locale)) {
 				if(*m_End == GetLineFeed<CharType>::get) {
 					m_CharEnd = 0;
 					++m_LineEnd;
@@ -86,11 +91,11 @@ namespace iflex {
 				++m_End;
 				++m_CharEnd;
 			}
-			if (!*m_End && fd != -1) {
+			if (!*m_End && m_Fd != -1) {
 				if (m_Start != m_End)
 					m_TempHolder.emplace_back(m_Start,
-						reinterpret_cast<size_t>(m_End) -
-						reinterpret_cast<size_t>(m_Start) + 1);
+						reinterpret_cast<size_t>(m_End)
+						- reinterpret_cast<size_t>(m_Start) + 1);
 				ReadFile();
 				continue;
 			}
@@ -101,7 +106,7 @@ namespace iflex {
 		template<class... Expression>
 		void ReadOne() {
 			for (;;) {
-			if (TestValue<CharType, Expression...>(*m_End, locale)) {
+			if (*m_End && TestValue<CharType, Expression...>(*m_End, locale)) {
 				if(*m_End == GetLineFeed<CharType>::get) {
 					m_CharEnd = 0;
 					++m_LineEnd;
@@ -110,7 +115,7 @@ namespace iflex {
 				++m_CharEnd;
 			}
 			else break;
-			if (!*m_End && fd != -1) {
+			if (!*m_End && m_Fd != -1) {
 				if (m_Start != m_End)
 					m_TempHolder.emplace_back(m_Start,
 							reinterpret_cast<size_t>(m_End) -
@@ -131,7 +136,7 @@ namespace iflex {
 					reinterpret_cast<size_t>(m_Start) + 1);
 			*/
 			for (;;) {
-				while (TestValue<CharType, Expression...>(*m_End)) {
+				while (*m_End && TestValue<CharType, Expression...>(*m_End)) {
 					if(*m_End == GetLineFeed<CharType>::get) {
 						m_CharEnd = 0;
 						++m_LineEnd;
@@ -140,7 +145,7 @@ namespace iflex {
 						++m_CharEnd;
 					++m_End;
 				}
-				if (!*m_End && fd != -1) {
+				if (!*m_End && m_Fd != -1) {
 					ReadFile();
 					continue;
 				}
@@ -150,8 +155,63 @@ namespace iflex {
 			m_LineStart = m_LineEnd;
 			m_Start = m_End;
 		}
+
+		template<class... Expression>
+		void SkipOne() {
+			/*
+			if (m_Start != m_End)
+				m_TempHolder.emplace_back(m_Start,
+					reinterpret_cast<size_t>(m_End) -
+					reinterpret_cast<size_t>(m_Start) + 1);
+			*/
+			for (;;) {
+				if (*m_End && TestValue<CharType, Expression...>(*m_End)) {
+					if(*m_End == GetLineFeed<CharType>::get) {
+						m_CharEnd = 0;
+						++m_LineEnd;
+					}
+					else
+						++m_CharEnd;
+					++m_End;
+				}
+				if (!*m_End && m_Fd != -1) {
+					ReadFile();
+					continue;
+				}
+				break;
+			}
+			m_CharStart = m_CharEnd;
+			m_LineStart = m_LineEnd;
+			m_Start = m_End;
+		}
+
+		protected:
+		CharType* GetTokenStart() {
+			return m_Start;
+		}
+
+		CharType* GetTokenEnd() {
+			return m_End;
+		}
+
+		size_t GetLineStart() const {
+			return m_LineStart;
+		}
+
+		size_t GetLineEnd() const {
+			return m_LineEnd;
+		}
+
+		size_t GetCharStart() const {
+			return m_CharStart;
+		}
+
+		size_t GetCharEnd() const {
+			return m_CharEnd;
+		}
+
 		void ReadFile() {
-			int r = read(fd, m_Buffer, m_BufferBytes);
+			int r = read(m_Fd, m_Buffer, m_BufferBytes);
 			*reinterpret_cast<CharType *>(
 			&reinterpret_cast<char *>(m_Buffer)[r]) = 0;
 			if (r < m_BufferBytes) {
@@ -160,72 +220,119 @@ namespace iflex {
 		}
 		//Read
 		//Save Read token
+
+		protected:
 		bool Flush() {
-			auto token_str = m_Parser.PushName(m_Start, m_End);
+			const CharType* token_str;
+			{
+				m_TempHolder.push_back(String::StealingConstructor(
+					m_Start, dtg::length(m_Start, m_End)));
+				token_str = PushName({m_TempHolder.begin(), m_TempHolder.end()});
+				m_TempHolder.back().Lose();
+				m_TempHolder.clear();
+			}
 			Token token = m_Tokenizer(token_str, m_LineStart + 1, m_CharStart + 1);
-			m_Parser.Push(token);
+			PushToken(token);
 			m_CharStart = m_CharEnd;
 			m_LineStart = m_LineEnd;
 			m_Start = m_End;
 			return token.GetType() != Traits::NA;
 		}
-		bool TokenEmpty() {
+
+		protected:
+		bool ReadEmpty() {
 			return m_Start == m_End;
 		}
-		bool FileOpen(const CharType* name) {
-			if (fd != -1)
+		bool FileOpen(const CharType* name, size_t length) {
+			if (m_Fd != -1)
 				Close();
 			Open(name);
 			//stream.open(name);
-			if (fd == -1) {
+			if (m_Fd == -1) {
 				return false;
 			}
-			if (!m_HeadBuffer) {
+			if (!m_HeapBuffer) {
 				m_Buffer = new CharType[m_BufferSize];
 				m_Buffer[m_BufferSize - 1] = 0;
-				m_HeadBuffer = true;
+				m_HeapBuffer = true;
 			}
 			m_Start	= m_Buffer;
 			m_End	= m_Buffer;
 			*m_End = 0;
-			m_Parser.SetActiveFile(name);
+			m_TokensLists.SetActive(name, length);
 			return true;
 		}
 
+		protected:
 		void StringOpen(const CharType* str, size_t size) {
 			static uint64_t uid = 0;
-			if (fd != -1) {
+			if (m_Fd != -1) {
 				Close();
 				//stream.clear(std::ios::failbit);
-				if (m_HeadBuffer)
+				if (m_HeapBuffer)
 					delete[] m_Buffer;
-				m_HeadBuffer = false;
+				m_HeapBuffer = false;
 			}
 			m_Buffer = new CharType[size];
-			m_HeadBuffer = true;
+			m_HeapBuffer = true;
 			memcpy(m_Buffer, str, size);
 			m_Start	= m_Buffer;
 			m_End	= m_Buffer;
-			m_Parser.SetActiveFile(("%%_$string_file$_" + std::string(++uid)).c_str());
-		}
-		bool IsFileOpen() {
-			return fd != -1;
+			m_TokensLists.SetActive("%%_$string_file$_" + std::to_string(++uid));
 		}
 
-		inline bool Lexing() const {
-			return (fd != -1 || *m_End);
+		bool IsFileOpen() {
+			return m_Fd != -1;
 		}
+
+		protected:
+		inline bool Lexing() const noexcept {
+			return (m_Fd != -1 || *m_End);
+		}
+
+		inline void TransformToLower() {
+			for (CharType* i = m_Start; i != m_End; ++i) {
+				*i = std::tolower(*i);
+			}
+		}
+
+		public:
+		const TokenLists& GetTokens() const noexcept{
+			return m_TokensLists;
+		}
+
+		TokenLists& GetTokens() noexcept {
+			return m_TokensLists;
+		}
+
+		const std::unordered_set<dtg::BasicSimpleString<CharType>>& GetNames() const noexcept{
+			return m_Names;
+		}
+
+		std::unordered_set<dtg::BasicSimpleString<CharType>>& GetNames() noexcept {
+			return m_Names;
+		}
+
 		public:
 		~Lexer() {
-			if (m_HeadBuffer)
+			if (m_HeapBuffer)
 				delete[] m_Buffer;
+		}
+
+		private:
+		const String& PushName(String&& string) {
+			return *(m_Names.emplace(std::forward<String>(string)).first);
+		}
+		inline void PushToken(Token token) {
+			m_TokensLists.Push(token);
 		}
 		private:
 		//std::basic_ifstream<CharType> stream;
-		//std::basic_string<CharType> m_Temp;
+		//dtg::BasicSimpleString<CharType> m_Temp;
+		std::unordered_set<dtg::BasicSimpleString<CharType>> m_Names;
 		std::vector<dtg::BasicSimpleString<CharType>> m_TempHolder;
-		Parser& m_Parser;
-		Tokenizer& m_Tokenizer;
+		TokenLists m_TokensLists;
+		const Tokenizer& m_Tokenizer;
 		CharType* m_Buffer;
 		CharType* m_Start;
 		CharType* m_End;
@@ -235,8 +342,8 @@ namespace iflex {
 		size_t m_CharEnd;
 		int m_BufferSize;
 		int m_BufferBytes;
-		int fd = -1;
-		bool m_HeadBuffer = 0;
+		int m_Fd = -1;
+		bool m_HeapBuffer = 0;
 		bool m_ReadingToken = 0;
 		static const std::locale locale;
 	};//class Lexer

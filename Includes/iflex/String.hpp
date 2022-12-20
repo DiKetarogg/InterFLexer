@@ -5,7 +5,7 @@
 namespace iflex {
 
 	template <class T>
-	class GetStringCompare;
+	struct GetStringCompare;
 	
 	template<>
 	struct GetStringCompare<char>{
@@ -18,7 +18,7 @@ namespace iflex {
 	};
 
 	template <class T>
-	class GetEmptyString;
+	struct GetEmptyString;
 	
 	template<>
 	struct GetEmptyString<char>{

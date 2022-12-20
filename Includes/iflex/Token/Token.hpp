@@ -14,7 +14,7 @@ namespace iflex {
 		using CharType = typename Traits::CharType;
 
 		Token():m_Name(GetEmptyString<CharType>::get),m_Enum(Traits::NA){}
-		
+
 		Token(const CharType* name, Enum type, size_t line, size_t character)
 			:m_Name(const_cast<CharType*>(name)),
 			m_Line(line),m_Char(character),m_Enum(type){}
@@ -45,8 +45,12 @@ namespace iflex {
 			m_Char = ch;
 			m_Enum = type;
 		}
-	
+
 		const CharType* GetName() const {
+			return m_Name;
+		}
+
+		const CharType* GetText() const {
 			return m_Name;
 		}
 
@@ -60,13 +64,18 @@ namespace iflex {
 
 		Enum GetType() const {
 			return m_Enum;
-		}	
+		}
+		//DTG_SPACESHIP_OPERATOR(GetStringCompare<CharType>::get(m_Name, other), 0, CharType *other)
+		DTG_SPACESHIP_OPERATOR(const Token& other
+			, static_cast<size_t>(m_Enum)
+			, static_cast<size_t>(other.m_Enum))
+
 	private:
-		CharType*	m_Name;
+		const CharType*	m_Name;
 		size_t		m_Line;
 		size_t		m_Char;
 		Enum		m_Enum;
-	};
+	}; //class Token
 
 #if defined(_GLIBCXX_OSTREAM) or defined(_OSTREAM_)
 
@@ -88,22 +97,3 @@ std::wostream& operator <<(std::wostream& stream, const Token<Traits>& other) {
 }
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

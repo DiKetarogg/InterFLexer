@@ -131,6 +131,20 @@ namespace iflex {
 	};
 
 	template<>
+	struct TestValueStruct<is::Punct> {
+		template<class CompareType>
+			static constexpr IFLEX_FORCE_INLINE
+			bool TestFor(CompareType c, const std::locale& locale) {
+				return std::ispunct(c, locale);
+			}
+		template<class CompareType>
+			static constexpr IFLEX_FORCE_INLINE
+			bool TestFor(CompareType c) {
+				return std::ispunct(c);
+			}
+	};
+
+	template<>
 	struct TestValueStruct<is::Any> {
 		template<class CompareType>
 			static constexpr IFLEX_FORCE_INLINE
@@ -156,6 +170,33 @@ namespace iflex {
 			static constexpr IFLEX_FORCE_INLINE
 			bool TestFor(CompareType c) {
 				return std::isalnum(c);
+			}
+	};
+
+	template<>
+	struct TestValueStruct<is::Digit> {
+		template<class CompareType>
+			static constexpr IFLEX_FORCE_INLINE
+			bool TestFor(CompareType c, const std::locale& locale) {
+				return std::isdigit(c, locale);
+			}
+		template<class CompareType>
+			static constexpr IFLEX_FORCE_INLINE
+			bool TestFor(CompareType c) {
+				return std::isdigit(c);
+			}
+	};
+	template<>
+	struct TestValueStruct<is::Alpha> {
+		template<class CompareType>
+			static constexpr IFLEX_FORCE_INLINE
+			bool TestFor(CompareType c, const std::locale& locale) {
+				return std::isalpha(c, locale);
+			}
+		template<class CompareType>
+			static constexpr IFLEX_FORCE_INLINE
+			bool TestFor(CompareType c) {
+				return std::isalpha(c);
 			}
 	};
 
@@ -238,6 +279,12 @@ namespace iflex {
 		bool TestFor(CompareType c, const std::locale& locale) {
 			return TestValueStruct<Check>::TestFor(c, locale) ||
 			TestValueStruct<Rest...>::TestFor(c, locale);
+		}
+		template<class CompareType>
+		static constexpr IFLEX_FORCE_INLINE
+		bool TestFor(CompareType c) {
+			return TestValueStruct<Check>::TestFor(c) ||
+			TestValueStruct<Rest...>::TestFor(c);
 		}
 	};
 

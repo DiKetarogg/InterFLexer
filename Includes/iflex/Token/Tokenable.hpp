@@ -8,94 +8,156 @@
 #include <dtg/Utilities.hpp>
 namespace iflex {
 	template<class Traits>
+	class TokenableRegular : public std::basic_regex<typename Traits::CharType> {
+	public:
+		using CharType	= typename Traits::CharType;
+		using Enum	= typename Traits::TokenEnum;
+		using Base	= std::basic_regex<typename Traits::CharType>;
+
+//		constexpr TokenableRegular():m_Enum(Traits::NA){};
+
+		constexpr TokenableRegular(const CharType* expression, Enum token)
+			: Base(expression)
+			, m_Enum(token) {}
+
+		constexpr TokenableRegular(const TokenableRegular& other) = default;
+		constexpr TokenableRegular(TokenableRegular&& other) = default;
+			//:Base(other.m_Regular)
+			//,m_Enum(other.m_Enum) {}
+
+		constexpr void Swap(TokenableRegular& other) {
+			dtg::Swap(static_cast<Base&>(*this), static_cast<Base&>(other));
+			dtg::Swap(m_Enum, other.m_Enum);
+		}
+
+		Enum GetToken() const noexcept {
+			return m_Enum;
+		}
+
+		constexpr TokenableRegular& operator = (const TokenableRegular& other) {
+			Base::operator=(other);
+			m_Enum = other.m_Enum;
+			return *this;
+		}
+
+		constexpr TokenableRegular& operator = (TokenableRegular&& other) {
+			Base::operator=(std::forward<std::basic_regex<CharType>>(other));
+			m_Enum = other.m_Enum;
+			return *this;
+		}
+
+	private:
+		Enum m_Enum;
+	}; //class TokenableRegular
+
+	template<class Traits>
 	class Tokenable {
 	public:
 	using CharType	= typename Traits::CharType;
 	using Enum	= typename Traits::TokenEnum;
 
-		Tokenable()
-		:m_Name(const_cast<CharType*>
-		(GetEmptyString<CharType>::get)), m_Enum(Traits::NA), m_IsRegular(false){};
+		constexpr Tokenable()
+		:m_Name(GetEmptyString<CharType>::get), m_Enum(Traits::NA) {};
 
-		Tokenable(const CharType* name, Enum token, bool regular = false)
-			:m_Name(
-				regular ?
-					reinterpret_cast<CharType*>(new std::basic_regex<CharType>(name))
-				:
-					const_cast<CharType*>(name)),
-			m_Enum(token),
-			m_IsRegular(regular){}
+		constexpr Tokenable(const CharType* name, Enum token)
+			:m_Name(name)
+			,m_Enum(token) {}
 
-		Tokenable(const Tokenable& other)
-			:m_Name(
-			other.m_IsRegular ?
-					reinterpret_cast<CharType*>
-					(new std::basic_regex<CharType>(*other.m_Regular))
-				:
-					other.m_Name
-			),
-			m_Enum(other.m_Enum), m_IsRegular(other.m_IsRegular){}
+		constexpr Tokenable(const Tokenable& other) = default;
+//			:m_Name(other.m_Name),
+//			m_Enum(other.m_Enum) {}
 
 		void Swap(Tokenable& other) {
 			dtg::Swap(m_Name, other.m_Name);
 			dtg::Swap(m_Enum, other.m_Enum);
-			dtg::Swap(m_IsRegular, other.m_IsRegular);
 		}
 
-		const CharType* GetName() const {
-			if (m_IsRegular)
-				return 0;
+		const CharType* GetName() const noexcept {
 			return m_Name;
 		}
 
-		const std::basic_regex<CharType>* GetRegular() const {
-			if (m_IsRegular)
-				return m_Regular;
-			return 0;
-		}
-
-		bool Regular() const {
-			return m_IsRegular;
-		}
-
-		Enum GetToken() const {
+		Enum GetToken() const noexcept {
 			return m_Enum;
 		}
 
-		Tokenable& operator=(const Tokenable& other) {
-			if (m_IsRegular)
-				delete m_Regular;
-
-			if (other.m_IsRegular)
-				m_Regular = new std::basic_regex<CharType>(*other.m_Regular);
-			else
-				m_Name = other.m_Name;
-
-			m_IsRegular = other.m_IsRegular;
+		constexpr Tokenable& operator = (const Tokenable& other) {
+			m_Name = other.m_Name;
 			m_Enum = other.m_Enum;
 			return *this;
 		}
-
-		Tokenable& operator=(Tokenable&& other) {
+/*
+		Tokenable& operator = (Tokenable&& other) {
 			m_Name = other.m_Name;
-			m_IsRegular = other.m_IsRegular;
 			m_Enum = other.m_Enum;
 			other.m_Name = 0;
 			return *this;
 		}
-
-		~Tokenable() {
-			if (m_IsRegular)
-				delete m_Regular;
+*/
+		constexpr Tokenable& operator = (const char *name) {
+			m_Name = name;
+			return *this;
 		}
-	private:
 
-		union {
-		CharType*			m_Name;
-		std::basic_regex<CharType>* 	m_Regular;
-		};
-		Enum				m_Enum;
-		bool				m_IsRegular;
+		constexpr Tokenable& operator = (Enum en) {
+			m_Enum = en;;
+			return *this;
+		}
+		constexpr bool operator < (const Tokenable& other) const noexcept {
+			return GetStringCompare<CharType>::get(m_Name, other.m_Name) < 0;
+		}
+
+		constexpr bool operator <= (const Tokenable& other) const noexcept {
+			return GetStringCompare<CharType>::get(m_Name, other.m_Name) <= 0;
+		}
+
+		constexpr bool operator == (const Tokenable& other) const noexcept {
+			return GetStringCompare<CharType>::get(m_Name, other.m_Name) == 0;
+		}
+
+		constexpr bool operator != (const Tokenable& other) const noexcept {
+			return GetStringCompare<CharType>::get(m_Name, other.m_Name) != 0;
+		}
+
+		constexpr bool operator > (const Tokenable& other) const noexcept {
+			return GetStringCompare<CharType>::get(m_Name, other.m_Name) > 0;
+		}
+
+		constexpr bool operator >= (const Tokenable& other) const noexcept {
+			return GetStringCompare<CharType>::get(m_Name, other.m_Name) >= 0;
+		}
+
+		explicit operator Enum() const noexcept {
+			return m_Enum;
+		}
+
+	private:
+		const CharType* m_Name;
+		Enum m_Enum;
 	}; //class Tokenable
+	/*
+	template<class Traits>
+	class TokenablesList {
+		public:
+		using TokenablesArray = std::array<typename Traits::Tokenable, Traits::tokenablesCount>;
+		using RegularsArray = std::array<typename Traits::TokenableRegular, Traits::regularCount>;
+		public:
+		template<class Range>
+		constexpr TokenablesList(Range&& range):Base(dtg::quickSort(std::forward<Range>(range))) {}
+
+		private:
+		TokenablesArray m_Tokenables;
+		RegularsArray m_Regulars;
+	};
+*/
+/*
+	template<class Traits>
+	class TokenablesMap : public std::array<typename Traits::Tokenable, Traits::tokenablesCount> {
+		public:
+		using Base = std::array<typename Traits::Tokenable, Traits::tokenablesCount>;
+		public:
+		template<class Range>
+		constexpr TokenablesMap(Range&& range):Base(dtg::quickSort(std::forward<Range>(range))) {}
+	};
+*/
 } // namespace iflex
 #endif

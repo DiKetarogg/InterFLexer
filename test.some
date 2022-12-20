@@ -1,6 +1,7 @@
-function func { ol
-	int i;
-	i = 9;
-}
-
-proram lol
+int a = 2;
+float b = 3.2;
+fLoAt A = 32.12;
+invalid va = 23;
+print a;
+print b;
+print 42.23;

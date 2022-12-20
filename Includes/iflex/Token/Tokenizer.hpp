@@ -4,157 +4,149 @@
 
 #include <regex>
 #include <dtg/Utilities.hpp>
+#include <unordered_map>
+#include <vector>
 #include "../String.hpp"
 namespace iflex {
+	/*
+	template<class T>
+	struct tokenable_hash_name {
+		inline auto operator()(const T& key) const {
+			return m_Hash(key.GetName());
+		}
+
+		std::hash<const typename T::CharType*> m_Hash;
+	};
+	*/
 	template <class Traits>
 	class Tokenizer {
 		public:
-		using Enum = typename Traits::TokenEnum;
-		using Tokenable = typename Traits::Tokenable;
+		//using TokenablesArray = std::array<typename Traits::Tokenable, Traits::tokenablesCount>;
+		//using RegularsArray = std::array<typename Traits::TokenableRegular, Traits::regularsCount>;
+
+		public:
 		using Token = typename Traits::Token;
 		using CharType = typename Traits::CharType;
+		using TokenEnum = typename Traits::TokenEnum;
+		using Tokenable = typename Traits::Tokenable;
+		using TokenableRegular = typename Traits::TokenableRegular;
+		using TokenGroupMap = typename Traits::TokenGroupMap;
+
 		protected:
-		
-		void Initialize(Tokenable* names, size_t size) {
-			static bool called = false;
-			if (!called) {
-				m_Tokenables = names;
-				m_Size = size;
-				m_MapTokenable = new Tokenable*[size];
-				called = true;
-				Sort();
+		using TokenablesMap = std::unordered_map<dtg::SimpleString, TokenEnum>;
+		using RegularsArray = std::vector<TokenableRegular>;
+		public:
+		Tokenizer(std::initializer_list<Tokenable> tokenables
+			, std::initializer_list<TokenableRegular> regs
+			, TokenGroupMap&& map)
+		: m_Tokenables()
+		, m_Regulars(regs)
+		, m_TokenGroupMap(std::forward<TokenGroupMap>(map)) {
+			for (const auto& e : tokenables) {
+				m_Tokenables.emplace(e.GetName(), e.GetToken());
 			}
 		}
-
-		Tokenizer() = default;
-
-		//Tokenizer():m_Tokenables(Traits::Names){ Sort(); };
 		Tokenizer(const Tokenizer&) = delete;
 		Tokenizer(Tokenizer&&) = delete;
 
 		private:
-
-		void SortOutRegular() {
-			size_t& j = m_WordsSize;
-			j = m_Size - 1;
-			while(j != 0 && m_Tokenables[j].Regular())
-				--j;
-			for (size_t i = 0; i != j; ++i) {
-				if(m_Tokenables[i].Regular())
-				for (;i != j;--j) {
-					if(!m_Tokenables[j].Regular()) {
-						m_Tokenables[i].Swap(m_Tokenables[j]);
-						do {
-						--j;
-						} while(j != i && m_Tokenables[j].Regular());
-						break;
-					}
-				}
-			}
-			++j;	
-		}
-
-		void Sort() {
-			SortOutRegular();
-			if (m_WordsSize != m_Size) {// Check if there are non-regular tokens
-				dtg::MergeSort<Tokenable>(m_Tokenables, m_WordsSize,
-					[](const Tokenable& first, const Tokenable& second)->bool {
-						return iflex::GetStringCompare<CharType>::
-						get(first.GetName(), second.GetName()) < 0;
-				});
-			}
-
-			for (size_t i = 0; i != m_Size; ++i) {
-				m_MapTokenable[i] = m_Tokenables + i;
-			}
-
-			dtg::MergeSort<Tokenable*>(m_MapTokenable, m_Size,
-					[](Tokenable* const& first, Tokenable* const& second)->bool {
-						return first->GetToken() < second->GetToken();
-					}
-				);
-		}
-
-		Enum FindRegular(const CharType* name) const {
-			for (size_t i = m_WordsSize; i != m_Size; ++i) {
-				if (std::regex_match(name, *m_Tokenables[i].GetRegular()))
-					return m_Tokenables[i].GetToken();
+		TokenEnum FindRegular(const CharType* name) const {
+			for (const auto& e : m_Regulars) {
+				if (std::regex_match(name, e))
+					return e.GetToken();
 			}
 			return Traits::NA;
 		}
 
+		private:
+		static int cmpTokenableStr(const CharType* name, const Tokenable* tokable) {
+			return GetStringCompare<CharType>::get(name, tokable->GetName());
+		}
+		static int cmpTokenableEnum(TokenEnum searched, const Tokenable* tokable) {
+			return ((*tokable) < searched) - (tokable > searched);
+		}
 		public:
 
-		Enum Find(const CharType* name) const {
-			if (!m_WordsSize)
+		TokenEnum Find(const CharType* name, size_t size) const {
+//			if (!m_WordsSize)
+//				return FindRegular(name);
+			auto thief = dtg::BasicSimpleString<CharType>::
+				StealingConstructor(const_cast<CharType*>(name), size);
+			auto it = m_Tokenables.find(thief);
+			thief.Lose();
+			if (it == m_Tokenables.end())
 				return FindRegular(name);
-			size_t l = 0;
-			size_t m = (m_WordsSize - 1) / 2;
-			size_t r = m_WordsSize;
-			int temp;
-			for (;;) {
-				if ((temp = GetStringCompare<CharType>::
-					get(name,m_Tokenables[m].GetName())) > 0) {
-					l = m;
-					m += (r - l) / 2;
-					if (l == m)
-						break;
-				}
-				else if(temp < 0) {
-					r = m;
-					m -= (r - l) / 2;
-					if (m == r)
-						break;
-				}
-				else
-					return m_Tokenables[m].GetToken();
-			}
-			return FindRegular(name);
+/*
+			const Tokenable* toka = dtg::binarySearch(m_Tokenables.begin()
+				, m_Tokenables.size()
+				, name);
+//				, cmpTokenableStr);
+*/
+			return it->second;
+		}
+		inline Token Tokenize(const CharType* name, size_t line, size_t character) const {
+			return Token(name, Find(name, dtg::countElems(name)), line, character);
 		}
 
-		const CharType* Find(Enum token) const {
+		inline Token Tokenize(const CharType* name, size_t length, size_t line, size_t character) const {
+			return Token(name, Find(name, length), line, character);
+		}
+
+		inline Token operator()(const CharType* name, size_t line, size_t character) const {
+			return Token(name, Find(name, dtg::countElems(name)), line, character);
+		}
+
+		inline Token operator()(const CharType* name, size_t length, size_t line, size_t character) const {
+			return Token(name, Find(name, length), line, character);
+		}
+		inline const TokenGroupMap& GetTokenGroupMap() const {
+			return m_TokenGroupMap;
+		}
+		private:
+		TokenablesMap m_Tokenables;
+		RegularsArray m_Regulars;
+		TokenGroupMap m_TokenGroupMap;
+		size_t        m_WordsSize;
+	};
+}
+
+//		TokenablesList		m_Tokenables;
+//		TokenablesMap		m_MapTokenable;
+/*
+		const CharType* Find(TokenEnum token) const {
 			if (!m_WordsSize)
 				return GetEmptyString<CharType>::get;
+			const Tokenable* toka = dtg::binarySearch(m_MapTokenable
+				, m_WordsSize
+				, token
+				, cmpTokenableEnum
+				);
+
 			size_t l = 0;
 			size_t m = (m_WordsSize - 1) / 2;
 			size_t r = m_WordsSize;
 			for (;;) {
 				if (static_cast<size_t>(token) >
-					static_cast<size_t>(m_Tokenables[m].GetToken())) {
+					static_cast<size_t>(m_MapTokenable[m].GetToken())) {
 					l = m;
 					m += (r - l + 1) / 2;
 					if (l == m)
 						break;
 				}
 				else if(static_cast<size_t>(token)
-					< static_cast<size_t>(m_Tokenables[m].GetToken())) {
+					< static_cast<size_t>(m_MapTokenable[m].GetToken())) {
 					r = m;
 					m -= (r - l + 1) / 2;
 					if (m == r)
 						break;
 				}
 				else
-					return m_Tokenables[m].GetName();
+					return m_MapTokenable[m].GetName();
 			}
-			return GetEmptyString<CharType>::get;
-		}
 
-		inline Token Tokenize(const CharType* name, size_t line, size_t character) {
-			return Token(name, Find(name), line, character);
+			if (!toka)
+				return GetEmptyString<CharType>::get;
+			return toka->GetName();
 		}
-
-		inline Token operator()(const CharType* name, size_t line, size_t character) {
-			return Token(name, Find(name), line, character);
-		}
-
-		~Tokenizer() {
-			delete[] m_MapTokenable;
-		}
-		private:
-		Tokenable*		m_Tokenables;
-		Tokenable**		m_MapTokenable;
-		size_t			m_WordsSize;
-		size_t			m_Size;
-	};
-}
+*/
 #endif
