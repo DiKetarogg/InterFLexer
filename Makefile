@@ -1,5 +1,5 @@
 CC = g++ -std=c++1z
-FLAG = -Wall -Wextra -IIncludes
+FLAG = -Wall -Wextra -IIncludes -IDependencies/dtg_lib/Includes
 all:
 	$(CC) $(FLAG) -o a.out Sources/main.cpp
 deb:
