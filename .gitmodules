@@ -1,3 +1,3 @@
 [submodule "Dependencies/dtg_lib"]
 	path = Dependencies/dtg_lib
-	url = https://github.com/DiKetarogg/InterFLexer.git
+	url = https://github.com/DiKetarogg/dtg_lib.git
